@@ -1,0 +1,516 @@
+local ExpectedKey = "3131" -- Şifreni buradan değiştirebilirsin
+
+-- Kütüphaneyi Başlat (Giriş Ekranı İçin)
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+--================================================================================
+-- KEY SYSTEM PENCERESİ
+--================================================================================
+
+local LoginWindow = Fluent:CreateWindow({
+    Title = "VCN | Login",
+    SubTitle = "Key System",
+    TabWidth = 120,
+    Size = UDim2.fromOffset(500, 320),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightAlt
+})
+
+local LoginTab = LoginWindow:AddTab({ Title = "Giriş", Icon = "key" })
+
+LoginTab:AddParagraph({
+    Title = "Hoşgeldiniz",
+    Content = "Devam etmek için lütfen şifreyi giriniz.\nŞifre: " .. ExpectedKey
+})
+
+local InputKey = LoginTab:AddInput("InputKey", {
+    Title = "Şifre",
+    Description = "Key'i buraya yapıştırın.",
+    Default = "",
+    Placeholder = "Şifreyi gir...",
+    Numeric = false,
+    Finished = false, 
+})
+
+LoginTab:AddButton({
+    Title = "Giriş Yap",
+    Description = "Doğrula ve Başlat",
+    Callback = function()
+        if InputKey.Value == ExpectedKey then
+            Fluent:Notify({Title = "Başarılı", Content = "Giriş yapılıyor...", Duration = 2})
+            
+            -- 1. Giriş ekranını kapatıyoruz
+            LoginWindow:Destroy() 
+            
+            -- 2. Çakışmayı önlemek için kısa bekleme
+            task.wait(1) 
+            
+            --==================================================================
+            -- ANA SCRİPT BURADA BAŞLIYOR (User's Main Script)
+            --==================================================================
+            
+            -- [Başlangıç] Senin gönderdiğin kod bloğu
+            local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+            local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+            local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+            --================================================================================
+            -- SERVİSLER & DEĞİŞKENLER
+            --================================================================================
+            local Players = game:GetService("Players")
+            local Workspace = game:GetService("Workspace")
+            local RunService = game:GetService("RunService")
+            local UserInput = game:GetService("UserInputService")
+            local Lighting = game:GetService("Lighting")
+            local Camera = Workspace.CurrentCamera
+            local LocalPlayer = Players.LocalPlayer
+            local Mouse = LocalPlayer:GetMouse()
+            local VirtualUser = game:GetService("VirtualUser")
+
+            --================================================================================
+            -- UI PENCERE OLUŞTURMA (FLUENT)
+            --================================================================================
+            local Window = Fluent:CreateWindow({
+                Title = "VCN | Ultimate Script v4.0",
+                SubTitle = "by esu",
+                TabWidth = 160,
+                Size = UDim2.fromOffset(580, 460),
+                Acrylic = true, 
+                Theme = "Dark", 
+                MinimizeKey = Enum.KeyCode.RightControl
+            })
+
+            -- Sekmeler (Tabs)
+            local Tabs = {
+                Main = Window:AddTab({ Title = "Ana Menü", Icon = "home" }),
+                Combat = Window:AddTab({ Title = "Savaş (Combat)", Icon = "swords" }),
+                Visuals = Window:AddTab({ Title = "Görsel (ESP)", Icon = "eye" }),
+                Movement = Window:AddTab({ Title = "Hareket", Icon = "move" }),
+                Teleport = Window:AddTab({ Title = "Işınlanma", Icon = "map-pin" }),
+                Admin = Window:AddTab({ Title = "Admin / Misc", Icon = "shield" }),
+                Settings = Window:AddTab({ Title = "Ayarlar", Icon = "settings" })
+            }
+
+            local Options = Fluent.Options 
+
+            --================================================================================
+            -- STATE & SETTINGS (Mantık Değişkenleri)
+            --================================================================================
+            local State = {
+                ESP = false, ESP_TeamCheck = false, ESP_Box = false, ESP_Name = false, ESP_Distance = false,
+                Aimbot = false, AimTeamCheck = false, SilentAim = false, NoRecoil = false,
+                WalkLock = false, JumpLock = false, Fly = false,
+                WeaponEnhancementsEnabled = true, RapidFire = false, InfiniteAmmo = false,
+                ClickTP = false, Noclip = false, InfJump = false, Fullbright = false, InstantProximity = false
+            }
+
+            local Settings = {
+                ESPColorHighlight = Color3.fromRGB(170, 0, 255),
+                ESPColorBox = Color3.fromRGB(255, 255, 255),
+                AimFOV = 200, AimDist = 1200, AimSmooth = 25,
+                WalkSpeed = 16, WalkMin = 16, WalkMax = 200,
+                JumpPower = 50, FlySpeed = 50, AmmoValue = 30
+            }
+
+            local function clamp(v,a,b) if v < a then return a elseif v > b then return b else return v end end
+            local workers = {}
+            local function spawnOnce(name, fn)
+                if workers[name] then return end
+                workers[name] = true
+                task.spawn(function() fn() workers[name] = nil end)
+            end
+            local HAS_DRAWING = pcall(function() return Drawing end)
+
+            --================================================================================
+            -- UI ELEMANLARI VE BAĞLANTILAR
+            --================================================================================
+
+            -- >>> COMBAT TAB <<<
+            local AimToggle = Tabs.Combat:AddToggle("AimbotToggle", {Title = "Aimbot Aç", Default = false })
+            AimToggle:OnChanged(function() State.Aimbot = Options.AimbotToggle.Value end)
+
+            local AimTeamToggle = Tabs.Combat:AddToggle("AimTeamCheck", {Title = "Takım Kontrolü (Team Check)", Default = false })
+            AimTeamToggle:OnChanged(function() State.AimTeamCheck = Options.AimTeamCheck.Value end)
+
+            Tabs.Combat:AddSlider("AimFOV", {
+                Title = "FOV Genişliği", Description = "Nişan alma alanı",
+                Default = 200, Min = 50, Max = 600, Rounding = 0,
+                Callback = function(Value) Settings.AimFOV = Value end
+            })
+
+            Tabs.Combat:AddSlider("AimSmooth", {
+                Title = "Yumuşaklık (Smooth)", Description = "Kayma hızı (Düşük = Yavaş)",
+                Default = 25, Min = 1, Max = 100, Rounding = 0,
+                Callback = function(Value) Settings.AimSmooth = Value end
+            })
+
+            Tabs.Combat:AddSlider("AimDist", {
+                Title = "Maksimum Mesafe", Description = "Aim çalışma mesafesi",
+                Default = 1200, Min = 200, Max = 5000, Rounding = 0,
+                Callback = function(Value) Settings.AimDist = Value end
+            })
+
+            -- Silah Bölümü
+            Tabs.Combat:AddSection("Silah Modifikasyonları")
+            Tabs.Combat:AddToggle("RapidFire", {Title = "Hızlı Ateş (Rapid Fire)", Default = false }):OnChanged(function() State.RapidFire = Options.RapidFire.Value end)
+            Tabs.Combat:AddToggle("InfAmmo", {Title = "Sınırsız Mermi", Default = false }):OnChanged(function() State.InfiniteAmmo = Options.InfAmmo.Value end)
+
+
+            -- >>> VISUALS (ESP) TAB <<<
+            local ESPMaster = Tabs.Visuals:AddToggle("ESPMaster", {Title = "ESP Aktif (Highlight)", Default = false })
+            ESPMaster:OnChanged(function() 
+                State.ESP = Options.ESPMaster.Value 
+            end)
+
+            Tabs.Visuals:AddToggle("ESPTeam", {Title = "Takım Arkadaşlarını Gizle", Default = false }):OnChanged(function() State.ESP_TeamCheck = Options.ESPTeam.Value end)
+            Tabs.Visuals:AddToggle("ESPBox", {Title = "Kutu ESP (2D)", Default = false }):OnChanged(function() State.ESP_Box = Options.ESPBox.Value end)
+            Tabs.Visuals:AddToggle("ESPName", {Title = "İsimleri Göster", Default = false }):OnChanged(function() State.ESP_Name = Options.ESPName.Value end)
+            Tabs.Visuals:AddToggle("ESPDist", {Title = "Mesafeyi Göster", Default = false }):OnChanged(function() State.ESP_Distance = Options.ESPDist.Value end)
+
+            Tabs.Visuals:AddColorpicker("HighlightColor", {
+                Title = "Highlight Rengi", Default = Settings.ESPColorHighlight,
+                Callback = function(Value) Settings.ESPColorHighlight = Value end
+            })
+            Tabs.Visuals:AddColorpicker("BoxColor", {
+                Title = "Kutu ve Yazı Rengi", Default = Settings.ESPColorBox,
+                Callback = function(Value) Settings.ESPColorBox = Value end
+            })
+
+
+            -- >>> MOVEMENT TAB <<<
+            Tabs.Movement:AddToggle("WalkLock", {Title = "Yürüme Hızı Kilidi", Default = false }):OnChanged(function() State.WalkLock = Options.WalkLock.Value end)
+            Tabs.Movement:AddSlider("WalkSpeed", { Title = "Hız Değeri", Default = 16, Min = 16, Max = 200, Rounding = 0, Callback = function(v) Settings.WalkSpeed = v end })
+
+            Tabs.Movement:AddToggle("JumpLock", {Title = "Zıplama Gücü Kilidi", Default = false }):OnChanged(function() State.JumpLock = Options.JumpLock.Value end)
+            Tabs.Movement:AddSlider("JumpPower", { Title = "Zıplama Gücü", Default = 50, Min = 50, Max = 400, Rounding = 0, Callback = function(v) Settings.JumpPower = v end })
+
+            Tabs.Movement:AddSection("Uçma (Fly)")
+            Tabs.Movement:AddToggle("Fly", {Title = "Uçmayı Aç", Default = false }):OnChanged(function() State.Fly = Options.Fly.Value end)
+            Tabs.Movement:AddSlider("FlySpeed", { Title = "Uçuş Hızı", Default = 50, Min = 10, Max = 200, Rounding = 0, Callback = function(v) Settings.FlySpeed = v end })
+
+
+            -- >>> TELEPORT TAB <<<
+            Tabs.Teleport:AddToggle("ClickTP", {Title = "Tıkla Işınlan (CTRL + Click)", Default = false }):OnChanged(function() State.ClickTP = Options.ClickTP.Value end)
+
+            local PlayerList = {}
+            local PlayerDropdown = Tabs.Teleport:AddDropdown("PlayerTP", {
+                Title = "Oyuncu Seç",
+                Values = PlayerList,
+                Multi = false,
+                Default = nil,
+            })
+
+            -- Oyuncu listesini yenileme fonksiyonu
+            local function RefreshPlayers()
+                local list = {}
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer then table.insert(list, p.Name) end
+                end
+                PlayerDropdown:SetValues(list)
+                PlayerDropdown:SetValue(nil)
+            end
+
+            Tabs.Teleport:AddButton({
+                Title = "Listeyi Yenile",
+                Callback = function() RefreshPlayers() end
+            })
+
+            Tabs.Teleport:AddButton({
+                Title = "Seçilen Oyuncuya Işınlan",
+                Callback = function()
+                    local selected = PlayerDropdown.Value
+                    if selected then
+                        local target = Players:FindFirstChild(selected)
+                        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                            Fluent:Notify({Title = "Başarılı", Content = selected .. " yanına gidildi.", Duration = 3})
+                        end
+                    else
+                        Fluent:Notify({Title = "Hata", Content = "Önce bir oyuncu seçmelisin.", Duration = 3})
+                    end
+                end
+            })
+
+            RefreshPlayers()
+
+
+            -- >>> ADMIN / MISC TAB <<<
+            Tabs.Admin:AddToggle("Noclip", {Title = "Noclip (Duvarlardan Geç)", Default = false }):OnChanged(function() State.Noclip = Options.Noclip.Value end)
+            Tabs.Admin:AddToggle("InfJump", {Title = "Infinite Jump (Havada Zıpla)", Default = false }):OnChanged(function() State.InfJump = Options.InfJump.Value end)
+            Tabs.Admin:AddToggle("Fullbright", {Title = "Fullbright (Aydınlık)", Default = false }):OnChanged(function() 
+                State.Fullbright = Options.Fullbright.Value 
+                if not State.Fullbright then
+                    Lighting.Brightness = 1
+                    Lighting.ClockTime = 12
+                    Lighting.GlobalShadows = true
+                end
+            end)
+            Tabs.Admin:AddToggle("InstantProximity", {Title = "Instant Interact (Hızlı E)", Default = false }):OnChanged(function() State.InstantProximity = Options.InstantProximity.Value end)
+
+            Tabs.Admin:AddSection("Sunucu İşlemleri")
+            Tabs.Admin:AddButton({
+                Title = "Rejoin (Tekrar Gir)",
+                Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer) end
+            })
+
+
+            --================================================================================
+            -- LOGIC (ARKA PLAN İŞLEMLERİ)
+            --================================================================================
+
+            -- Anti-AFK
+            LocalPlayer.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+
+            -- Noclip Logic
+            RunService.Stepped:Connect(function()
+                if State.Noclip and LocalPlayer.Character then
+                    for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+                    end
+                end
+            end)
+
+            -- Inf Jump Logic
+            UserInput.JumpRequest:Connect(function()
+                if State.InfJump and LocalPlayer.Character then
+                    local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+                    if hum then hum:ChangeState("Jumping") end
+                end
+            end)
+
+            -- Fullbright Loop
+            spawnOnce("FullbrightLoop", function()
+                while true do
+                    if State.Fullbright then
+                        Lighting.Brightness = 2; Lighting.ClockTime = 14; Lighting.FogEnd = 100000
+                        Lighting.GlobalShadows = false; Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+                    end
+                    task.wait(1)
+                end
+            end)
+
+            -- Instant Proximity Loop
+            spawnOnce("ProximityLoop", function()
+                while true do
+                    if State.InstantProximity then
+                        for _, v in pairs(workspace:GetDescendants()) do
+                            if v:IsA("ProximityPrompt") then v.HoldDuration = 0 end
+                        end
+                    end
+                    task.wait(0.5)
+                end
+            end)
+
+            -- ESP SİSTEMİ (Highlight & Drawing)
+            local highlights = {}
+            local function ensureHighlightForPlayer(p)
+                if highlights[p] and highlights[p].Instance and highlights[p].Instance.Parent then return end
+                if not p.Character then return end
+                local hl = Instance.new("Highlight")
+                hl.Name = "VCN_Highlight_" .. p.Name
+                hl.Adornee = p.Character
+                hl.FillColor = Settings.ESPColorHighlight
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.FillTransparency = 0.6
+                hl.Enabled = false
+                pcall(function() hl.Parent = game.CoreGui end)
+                highlights[p] = {Instance = hl}
+            end
+
+            local function removeHighlightForPlayer(p)
+                local data = highlights[p]
+                if data and data.Instance then pcall(function() data.Instance:Destroy() end) end
+                highlights[p] = nil
+            end
+
+            function updateHighlightsState() 
+                for p,data in pairs(highlights) do
+                    if data and data.Instance then
+                        if p and p.Character then data.Instance.Adornee = p.Character end
+                        local ok = p and p.Character and (not State.ESP_TeamCheck or (p.Team ~= LocalPlayer.Team))
+                        data.Instance.FillColor = Settings.ESPColorHighlight
+                        data.Instance.Enabled = State.ESP and ok and p ~= LocalPlayer
+                    end
+                end
+            end
+
+            Players.PlayerAdded:Connect(function(p)
+                p.CharacterAdded:Connect(function(char) task.wait(1) ensureHighlightForPlayer(p) updateHighlightsState() end)
+                task.delay(0.2, function() ensureHighlightForPlayer(p) end)
+            end)
+            Players.PlayerRemoving:Connect(function(p) removeHighlightForPlayer(p) end)
+            for _,p in ipairs(Players:GetPlayers()) do ensureHighlightForPlayer(p) end
+
+            -- Drawing Lib Objects
+            local drawingObjects = {}
+            local function createDrawingForPlayer(plr)
+                if not HAS_DRAWING then return end
+                if drawingObjects[plr] then return end
+                local objs = {}
+                objs.box = Drawing.new("Square"); objs.box.Filled = false; objs.box.Thickness = 2; objs.box.Transparency = 1
+                objs.name = Drawing.new("Text"); objs.name.Size = 16; objs.name.Center = true; objs.name.Outline = true
+                objs.dist = Drawing.new("Text"); objs.dist.Size = 14; objs.dist.Center = true; objs.dist.Outline = true
+                drawingObjects[plr] = objs
+            end
+            local function removeDrawingForPlayer(plr)
+                local o = drawingObjects[plr]
+                if not o then return end
+                for _,v in pairs(o) do pcall(function() v:Remove() end) end
+                drawingObjects[plr] = nil
+            end
+
+            local function worldToViewportPoint(pos)
+                local p, onScreen = Camera:WorldToViewportPoint(pos)
+                return Vector2.new(p.X, p.Y), onScreen, p.Z
+            end
+
+            -- MAIN RENDER LOOP (ESP & Movement)
+            RunService.RenderStepped:Connect(function()
+                pcall(updateHighlightsState)
+                
+                -- ESP Rendering
+                for _, plr in pairs(Players:GetPlayers()) do
+                    if plr == LocalPlayer then
+                        removeDrawingForPlayer(plr)
+                    else
+                        local char = plr.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                        if char and hrp and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                            local okTeam = (not State.ESP_TeamCheck) or (plr.Team ~= LocalPlayer.Team)
+                            if State.ESP and okTeam then
+                                if HAS_DRAWING and State.ESP_Box then
+                                    createDrawingForPlayer(plr)
+                                    local objs = drawingObjects[plr]
+                                    if objs then
+                                        local rootPos = hrp.Position
+                                        local topPos = rootPos + Vector3.new(0, 2, 0); local bottomPos = rootPos - Vector3.new(0, 2, 0)
+                                        local vpTop, topOn = worldToViewportPoint(topPos); local vpBottom, bottomOn = worldToViewportPoint(bottomPos)
+                                        if topOn or bottomOn then
+                                            local height = math.abs(vpTop.Y - vpBottom.Y); local width = math.clamp(height / 2.2, 20, 200); local center = (vpTop + vpBottom) / 2
+                                            objs.box.Visible = true; objs.box.Size = Vector2.new(width, height); objs.box.Position = center - (objs.box.Size / 2); objs.box.Color = Settings.ESPColorBox
+                                            if State.ESP_Name then
+                                                objs.name.Visible = true; objs.name.Text = plr.Name; objs.name.Position = Vector2.new(center.X, center.Y - height/2 - 14); objs.name.Color = Settings.ESPColorBox
+                                            else objs.name.Visible = false end
+                                            if State.ESP_Distance then
+                                                local dist = math.floor((LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (LocalPlayer.Character.HumanoidRootPart.Position - rootPos).Magnitude) or 0)
+                                                objs.dist.Visible = true; objs.dist.Text = tostring(dist) .. "m"; objs.dist.Position = Vector2.new(center.X, center.Y + height/2 + 2); objs.dist.Color = Settings.ESPColorBox
+                                            else objs.dist.Visible = false end
+                                        else objs.box.Visible = false; objs.name.Visible = false; objs.dist.Visible = false end
+                                    end
+                                else removeDrawingForPlayer(plr) end
+                            else removeDrawingForPlayer(plr) end
+                        else removeDrawingForPlayer(plr) end
+                    end
+                end
+                
+                -- Movement & Fly
+                local char = LocalPlayer.Character; if not char then return end
+                local hum = char:FindFirstChild("Humanoid"); local root = char:FindFirstChild("HumanoidRootPart")
+                if hum then
+                    if State.WalkLock and hum.WalkSpeed ~= Settings.WalkSpeed then hum.WalkSpeed = Settings.WalkSpeed end
+                    if State.JumpLock then hum.UseJumpPower = true; if hum.JumpPower ~= Settings.JumpPower then hum.JumpPower = Settings.JumpPower end end
+                end
+                
+                if State.Fly and root and hum then
+                    hum.PlatformStand = true 
+                    local cameraCFrame = Camera.CFrame; local speed = Settings.FlySpeed
+                    local bv = root:FindFirstChild("VCNFlyBodyVelocity") or Instance.new("BodyVelocity"); bv.Name = "VCNFlyBodyVelocity"; bv.Parent = root; bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                    local bg = root:FindFirstChild("VCNFlyBodyGyro") or Instance.new("BodyGyro"); bg.Name = "VCNFlyBodyGyro"; bg.Parent = root; bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge); bg.P = 9000; bg.D = 200
+                    local moveDir = Vector3.new(0,0,0)
+                    if UserInput:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cameraCFrame.LookVector end
+                    if UserInput:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cameraCFrame.LookVector end
+                    if UserInput:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cameraCFrame.RightVector end
+                    if UserInput:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cameraCFrame.RightVector end
+                    if UserInput:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+                    if UserInput:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+                    if moveDir.Magnitude > 0 then moveDir = moveDir.Unit * speed end
+                    bv.Velocity = moveDir; bg.CFrame = cameraCFrame
+                else
+                    if root then
+                        local bv = root:FindFirstChild("VCNFlyBodyVelocity"); if bv then bv:Destroy() end
+                        local bg = root:FindFirstChild("VCNFlyBodyGyro"); if bg then bg:Destroy() end
+                    end
+                    if hum then hum.PlatformStand = false end
+                end
+            end)
+
+            -- AIMBOT LOOP
+            local function findClosestEnemy()
+                local closest = nil; local shortest = Settings.AimFOV
+                for _,plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                        if (not State.AimTeamCheck) or (not plr.Team) or (not LocalPlayer.Team) or (plr.Team ~= LocalPlayer.Team) then
+                            local head = plr.Character.Head; local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                            if onScreen then
+                                local dist2D = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                                if dist2D < shortest then shortest = dist2D; closest = plr end
+                            end
+                        end
+                    end
+                end
+                return closest
+            end
+
+            spawnOnce("aim_loop", function()
+                while true do
+                    if State.Aimbot then
+                        local target = findClosestEnemy()
+                        if target and target.Character and target.Character:FindFirstChild("Head") then
+                            local headPos = target.Character.Head.Position; local desired = CFrame.new(Camera.CFrame.Position, headPos)
+                            local aimSpeed = clamp((Settings.AimSmooth/100), 0.01, 1)
+                            Camera.CFrame = Camera.CFrame:Lerp(desired, aimSpeed)
+                        end
+                    end
+                    task.wait()
+                end
+            end)
+
+            -- Click TP
+            Mouse.Button1Down:Connect(function()
+                if State.ClickTP and UserInput:IsKeyDown(Enum.KeyCode.LeftControl) then
+                    local targetPos = Mouse.Hit.p
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3.5, 0))
+                    end
+                end
+            end)
+
+            -- SaveManager ve InterfaceManager
+            SaveManager:SetLibrary(Fluent)
+            InterfaceManager:SetLibrary(Fluent)
+            SaveManager:IgnoreThemeSettings()
+            SaveManager:SetFolder("VCN_v4")
+            InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+            SaveManager:BuildConfigSection(Tabs.Settings)
+
+            Window:SelectTab(1)
+            Fluent:Notify({
+                Title = "VCN v4.0",
+                Content = "Fluent UI ile başarıyla yüklendi!",
+                Duration = 5
+            })
+
+            --==================================================================
+            -- ANA SCRİPT BURADA BİTİYOR
+            --==================================================================
+
+        else
+            Fluent:Notify({Title = "Hata", Content = "Yanlış Şifre!", Duration = 3})
+        end
+    end
+})
+
+LoginTab:AddButton({
+    Title = "Şifreyi Kopyala",
+    Callback = function() 
+        setclipboard(ExpectedKey) 
+        Fluent:Notify({Title = "Kopyalandı", Content = "Şifre panoya kopyalandı.", Duration = 2}) 
+    end
+})
+
+-- Pencereyi seç
+LoginWindow:SelectTab(1)
