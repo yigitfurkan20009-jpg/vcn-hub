@@ -83,13 +83,12 @@ LoginTab:AddButton({
 
             -- Sekmeler (Tabs)
             local Tabs = {
-                Main = Window:AddTab({ Title = "Ana Menü", Icon = "home" }),
-                Combat = Window:AddTab({ Title = "Savaş (Combat)", Icon = "swords" }),
-                Visuals = Window:AddTab({ Title = "Görsel (ESP)", Icon = "eye" }),
-                Movement = Window:AddTab({ Title = "Hareket", Icon = "move" }),
-                Teleport = Window:AddTab({ Title = "Işınlanma", Icon = "map-pin" }),
-                Admin = Window:AddTab({ Title = "Admin / Misc", Icon = "shield" }),
-                Settings = Window:AddTab({ Title = "Ayarlar", Icon = "settings" })
+                Combat = Window:AddTab({ Title = "Aimbot", Icon = "swords" }),
+                Visuals = Window:AddTab({ Title = "Esp", Icon = "eye" }),
+                Movement = Window:AddTab({ Title = "Move", Icon = "move" }),
+                Teleport = Window:AddTab({ Title = "Teleport", Icon = "map-pin" }),
+                Admin = Window:AddTab({ Title = "Misc", Icon = "shield" }),
+                Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
             }
 
             local Options = Fluent.Options 
