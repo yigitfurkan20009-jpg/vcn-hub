@@ -1,4 +1,4 @@
-local ExpectedKey = "3131" -- Şifreni buradan değiştirebilirsin
+local ExpectedKey = "ESUBABAZİRVE" -- Şifreni buradan değiştirebilirsin
 
 -- Kütüphaneyi Başlat (Giriş Ekranı İçin)
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -8,8 +8,8 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 --================================================================================
 
 local LoginWindow = Fluent:CreateWindow({
-    Title = "VCN | Login",
-    SubTitle = "Key System",
+    Title = "VCN |  Script / Login",
+    SubTitle = "by esu",
     TabWidth = 120,
     Size = UDim2.fromOffset(500, 320),
     Acrylic = true,
@@ -21,7 +21,7 @@ local LoginTab = LoginWindow:AddTab({ Title = "Giriş", Icon = "key" })
 
 LoginTab:AddParagraph({
     Title = "Hoşgeldiniz",
-    Content = "Devam etmek için lütfen şifreyi giriniz.\nŞifre: " .. ExpectedKey
+    Content = "Devam etmek için lütfen şifreyi giriniz. (şifre'yi ESU'dan almalısınız.)"
 })
 
 local InputKey = LoginTab:AddInput("InputKey", {
@@ -38,7 +38,7 @@ LoginTab:AddButton({
     Description = "Doğrula ve Başlat",
     Callback = function()
         if InputKey.Value == ExpectedKey then
-            Fluent:Notify({Title = "Başarılı", Content = "Giriş yapılıyor...", Duration = 2})
+            Fluent:Notify({Title = "Başarılı", Content = "Giriş yapılıyor...", Duration = 3})
             
             -- 1. Giriş ekranını kapatıyoruz
             LoginWindow:Destroy() 
@@ -72,7 +72,7 @@ LoginTab:AddButton({
             -- UI PENCERE OLUŞTURMA (FLUENT)
             --================================================================================
             local Window = Fluent:CreateWindow({
-                Title = "VCN | Ultimate Script v4.0",
+                Title = "VCN | Script",
                 SubTitle = "by esu",
                 TabWidth = 160,
                 Size = UDim2.fromOffset(580, 460),
